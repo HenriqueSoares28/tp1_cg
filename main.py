@@ -32,13 +32,20 @@ class Shape:
 
     def calculate_bounding_box(self):
         if self.type == 'line':
-            x_values = [p[0] for p in self.points]
-            y_values = [p[1] for p in self.points]
-            return pygame.Rect(min(x_values), min(y_values),
-                               max(x_values)-min(x_values), max(y_values)-min(y_values))
+            x_coords = [p[0] for p in self.points]
+            y_coords = [p[1] for p in self.points]
+            return pygame.Rect(
+                min(x_coords), min(y_coords),
+                max(x_coords) - min(x_coords),
+                max(y_coords) - min(y_coords)
+            )
         elif self.type == 'circle':
-            return pygame.Rect(self.points[0][0]-self.radius, self.points[0][1]-self.radius,
-                               self.radius*2, self.radius*2)
+            return pygame.Rect(
+                self.points[0][0] - self.radius,
+                self.points[0][1] - self.radius,
+                self.radius * 2,
+                self.radius * 2
+            )
         return pygame.Rect(0, 0, 0, 0)
 
     def draw(self, screen):
@@ -111,7 +118,7 @@ class GraphicsEditor:
         
         instructions = [
             "[W/A/S/D] Mover",
-            "[Q/E] Rotacionar",
+            "[Q/E] Rotacionar linhas",
             "[Z/X] Escala",
             "[C] Limpar tela",
             "[R] Remover seleção",
@@ -161,25 +168,16 @@ class GraphicsEditor:
                                 if shape.selected and shape not in self.selected_shapes:
                                     self.selected_shapes.append(shape)
                                 else:
-                                    self.selected_shapes.remove(shape)
+                                    if shape in self.selected_shapes:
+                                        self.selected_shapes.remove(shape)
                                 break
                     else:
                         if self.current_mode == 'freehand':
                             self.drawing = True
                             self.temp_points.append(mouse_pos)
-
-                        elif self.current_mode == 'line':
+                        elif self.current_mode in ['line', 'circle', 'clip']:
                             if len(self.temp_points) < 2:
                                 self.temp_points.append(mouse_pos)
-
-                        elif self.current_mode == 'circle':
-                            if len(self.temp_points) < 2:
-                                self.temp_points.append(mouse_pos)
-
-                        elif self.current_mode == 'clip':
-                            if len(self.temp_points) < 2:
-                                self.temp_points.append(mouse_pos)
-
                         elif self.current_mode == 'brush':
                             if event.button == 4:
                                 self.brush_size = min(20, self.brush_size + 1)
@@ -213,13 +211,12 @@ class GraphicsEditor:
                     self.clipping_window = pygame.Rect(
                         self.temp_points[0],
                         (self.temp_points[1][0] - self.temp_points[0][0],
-                        self.temp_points[1][1] - self.temp_points[0][1]))
+                         self.temp_points[1][1] - self.temp_points[0][1]))
                     self.temp_points.clear()
 
             elif event.type == pygame.MOUSEMOTION:
                 if self.current_mode == 'freehand' and self.drawing and self.is_in_drawing_area(mouse_pos):
                     self.temp_points.append(mouse_pos)
-
                 elif self.current_mode == 'select' and self.dragging:
                     self.selection_rect.width = mouse_pos[0] - self.selection_rect.x
                     self.selection_rect.height = mouse_pos[1] - self.selection_rect.y
@@ -227,27 +224,41 @@ class GraphicsEditor:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_c:
                     self.shapes.clear()
+                    self.selected_shapes.clear()
                 elif event.key == pygame.K_r:
                     self.selected_shapes.clear()
                     for shape in self.shapes:
                         shape.selected = False
-                elif self.current_mode == 'transform' and self.selected_shapes:
+                elif self.current_mode == 'transform':
+                    # Debug: log do modo transform
+                    print("Modo TRANSFORM ativo. Formas selecionadas: {}".format(len(self.selected_shapes)))
+                    step = 5
+                    scale_factor = 1.1
+                    
                     if event.key == pygame.K_w:
-                        self.transform_selected(0, -5)
+                        print("Tecla W pressionada (translação para cima)")
+                        self.transform_selected(dy=-step)
                     elif event.key == pygame.K_s:
-                        self.transform_selected(0, 5)
+                        print("Tecla S pressionada (translação para baixo)")
+                        self.transform_selected(dy=step)
                     elif event.key == pygame.K_a:
-                        self.transform_selected(-5, 0)
+                        print("Tecla A pressionada (translação para esquerda)")
+                        self.transform_selected(dx=-step)
                     elif event.key == pygame.K_d:
-                        self.transform_selected(5, 0)
+                        print("Tecla D pressionada (translação para direita)")
+                        self.transform_selected(dx=step)
                     elif event.key == pygame.K_q:
-                        self.transform_selected(rotate=-5)
+                        print("Tecla Q pressionada (rotação anti-horária)")
+                        self.transform_selected(angle=-step)
                     elif event.key == pygame.K_e:
-                        self.transform_selected(rotate=5)
+                        print("Tecla E pressionada (rotação horária)")
+                        self.transform_selected(angle=step)
                     elif event.key == pygame.K_z:
-                        self.transform_selected(scale=1.1)
+                        print("Tecla Z pressionada (aumentar escala)")
+                        self.transform_selected(scale=scale_factor)
                     elif event.key == pygame.K_x:
-                        self.transform_selected(scale=0.9)
+                        print("Tecla X pressionada (diminuir escala)")
+                        self.transform_selected(scale=1/scale_factor)
 
     def finalize_selection(self):
         for shape in self.shapes:
@@ -255,32 +266,95 @@ class GraphicsEditor:
                 shape.selected = True
                 if shape not in self.selected_shapes:
                     self.selected_shapes.append(shape)
+            else:
+                if shape.selected and not self.selection_rect.colliderect(shape.bounding_box):
+                    shape.selected = False
+                    if shape in self.selected_shapes:
+                        self.selected_shapes.remove(shape)
 
-    def transform_selected(self, dx=0, dy=0, rotate=0, scale=1):
+    def transform_selected(self, dx=0, dy=0, angle=0, scale=1):
+        print("Iniciando transform_selected -> dx: {}, dy: {}, angle: {}, scale: {}"
+              .format(dx, dy, angle, scale))
+        if not self.selected_shapes:
+            print("Nenhuma forma selecionada!")
+            return
         for shape in self.selected_shapes:
+            print(">> Antes -> Tipo: {}, Pontos: {}, Raio: {}".format(shape.type, shape.points, shape.radius))
+            
             # Translação
             if dx != 0 or dy != 0:
-                shape.points = [(p[0] + dx, p[1] + dy) for p in shape.points]
+                print("Aplicando translação: dx={} | dy={}".format(dx, dy))
+                if shape.type in ['line', 'freehand']:
+                    shape.points = [(p[0] + dx, p[1] + dy) for p in shape.points]
+                elif shape.type == 'circle':
+                    shape.points[0] = (shape.points[0][0] + dx, shape.points[0][1] + dy)
             
-            # Rotação
-            if rotate != 0:
-                angle = math.radians(rotate)
-                cx, cy = shape.points[0]
-                new_points = []
-                for x, y in shape.points:
-                    x -= cx
-                    y -= cy
-                    new_x = x * math.cos(angle) - y * math.sin(angle)
-                    new_y = x * math.sin(angle) + y * math.cos(angle)
-                    new_points.append((new_x + cx, new_y + cy))
-                shape.points = new_points
-            
+            # Rotação (apenas para linhas)
+            if angle != 0:
+                if shape.type == 'line':
+                    print("Aplicando rotação: angle={} graus".format(angle))
+                    cx = (shape.points[0][0] + shape.points[1][0]) / 2
+                    cy = (shape.points[0][1] + shape.points[1][1]) / 2
+                elif shape.type == 'freehand' and len(shape.points) > 1:
+                    # Para freehand, usa-se a média de todos os pontos como centro
+                    cx = sum(p[0] for p in shape.points) / len(shape.points)
+                    cy = sum(p[1] for p in shape.points) / len(shape.points)
+                    print("Aplicando rotação (freehand): angle={} graus | Centro: ({}, {})".format(angle, cx, cy))
+                else:
+                    cx = cy = 0
+
+                if shape.type in ['line', 'freehand'] and (shape.type == 'line' or len(shape.points) > 1):
+                    angle_rad = math.radians(angle)
+                    new_points = []
+                    for p in shape.points:
+                        # ponto relativo ao centro de rotação
+                        rel_x = p[0] - cx
+                        rel_y = p[1] - cy
+                        rot_x = rel_x * math.cos(angle_rad) - rel_y * math.sin(angle_rad)
+                        rot_y = rel_x * math.sin(angle_rad) + rel_y * math.cos(angle_rad)
+                        new_points.append((rot_x + cx, rot_y + cy))
+                    shape.points = new_points
+                
             # Escala
             if scale != 1:
-                cx, cy = shape.points[0]
-                shape.points = [(cx + (x - cx) * scale, cy + (y - cy) * scale) for x, y in shape.points]
+                print("Aplicando escala: scale={}".format(scale))
+                if shape.type in ['line', 'freehand']:
+                    if len(shape.points) >= 2:
+                        # Usar o ponto central para escala
+                        cx = sum(p[0] for p in shape.points) / len(shape.points)
+                        cy = sum(p[1] for p in shape.points) / len(shape.points)
+                        new_points = []
+                        for p in shape.points:
+                            new_points.append((cx + (p[0] - cx) * scale, cy + (p[1] - cy) * scale))
+                        shape.points = new_points
+                    else:
+                        shape.points = [(p[0] * scale, p[1] * scale) for p in shape.points]
+                elif shape.type == 'circle':
+                    shape.radius = int(shape.radius * scale)
             
+            # Atualizar bounding box
             shape.bounding_box = shape.calculate_bounding_box()
+            print(">> Depois -> Tipo: {}, Pontos: {}, Raio: {}, Bounding Box: {}"
+                  .format(shape.type, shape.points, shape.radius, shape.bounding_box))
+
+    def draw_previews(self):
+        if self.is_in_drawing_area(pygame.mouse.get_pos()):
+            # Preview do freehand
+            if self.current_mode == 'freehand' and len(self.temp_points) > 0:
+                pygame.draw.lines(self.screen, COLORS['draw'], False, self.temp_points + [pygame.mouse.get_pos()], self.brush_size)
+            
+            # Preview da linha
+            elif self.current_mode == 'line' and len(self.temp_points) == 1:
+                pygame.draw.line(self.screen, COLORS['draw'], 
+                               self.temp_points[0], pygame.mouse.get_pos(), 
+                               self.brush_size)
+
+            # Preview do círculo
+            elif self.current_mode == 'circle' and len(self.temp_points) == 1:
+                radius = math.hypot(pygame.mouse.get_pos()[0] - self.temp_points[0][0],
+                                  pygame.mouse.get_pos()[1] - self.temp_points[0][1])
+                pygame.draw.circle(self.screen, COLORS['draw'], 
+                                 self.temp_points[0], int(radius), self.brush_size)
 
     def draw(self):
         self.screen.fill(COLORS['background'])
@@ -292,21 +366,7 @@ class GraphicsEditor:
             shape.draw(self.screen)
 
         # Desenhar previews
-        if self.is_in_drawing_area(pygame.mouse.get_pos()):
-            if self.current_mode == 'line' and len(self.temp_points) == 1:
-                pygame.draw.line(self.screen, COLORS['draw'], 
-                               self.temp_points[0], pygame.mouse.get_pos(), 
-                               self.brush_size)
-
-            elif self.current_mode == 'circle' and len(self.temp_points) == 1:
-                radius = math.hypot(pygame.mouse.get_pos()[0] - self.temp_points[0][0],
-                                  pygame.mouse.get_pos()[1] - self.temp_points[0][1])
-                pygame.draw.circle(self.screen, COLORS['draw'], 
-                                 self.temp_points[0], int(radius), self.brush_size)
-
-            elif self.current_mode == 'freehand' and len(self.temp_points) > 1:
-                pygame.draw.lines(self.screen, COLORS['draw'], 
-                                False, self.temp_points, self.brush_size)
+        self.draw_previews()
 
         # Desenhar seleção
         if self.dragging and self.selection_rect:
@@ -322,7 +382,6 @@ class GraphicsEditor:
         pygame.display.flip()
         self.clock.tick(60)
 
-    # Método run que estava faltando
     def run(self):
         while True:
             self.handle_events()
