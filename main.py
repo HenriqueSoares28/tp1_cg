@@ -16,16 +16,16 @@ PRETO = (0, 0, 0)
 VERMELHO = (255, 0, 0)
 AZUL = (0, 0, 255)
 
-# Lista de pontos e linhas
-pontos = []
-modo_desenho = "DDA"  # Alterna entre DDA e Bresenham
+fps = 60
+clock = pygame.time.Clock()
+WIDTH = 800
+HEIGHT = 600
 
-# Função para desenhar a grade
-def desenhar_grade():
-    for x in range(0, LARGURA, TAMANHO_PIXEL):
-        pygame.draw.line(tela, PRETO, (x, 0), (x, ALTURA))
-    for y in range(0, ALTURA, TAMANHO_PIXEL):
-        pygame.draw.line(tela, PRETO, (0, y), (LARGURA, y))
+
+
+
+
+
 
 # Algoritmo de Rasterização - DDA
 def desenhar_linha_dda(x1, y1, x2, y2, cor=PRETO):
