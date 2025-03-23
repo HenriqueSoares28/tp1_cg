@@ -152,9 +152,13 @@ class GraphicsEditor:
                 if mouse_pos[1] < 50:
                     for i, btn in enumerate(self.buttons):
                         if btn.collidepoint(mouse_pos):
-                            self.current_mode = self.modes[i]
+                            new_mode = self.modes[i]
+                            self.current_mode = new_mode
                             self.temp_points.clear()
-                            self.selected_shapes.clear()
+                            # Se mudar para um modo que não seja transform, limpe a seleção
+                            if new_mode != "transform":
+                                self.selected_shapes.clear()
+                            print("Modo alterado para:", new_mode)
                 elif self.is_in_drawing_area(mouse_pos):
                     if self.current_mode == 'select':
                         self.selection_start = mouse_pos
@@ -230,7 +234,6 @@ class GraphicsEditor:
                     for shape in self.shapes:
                         shape.selected = False
                 elif self.current_mode == 'transform':
-                    # Debug: log do modo transform
                     print("Modo TRANSFORM ativo. Formas selecionadas: {}".format(len(self.selected_shapes)))
                     step = 5
                     scale_factor = 1.1
