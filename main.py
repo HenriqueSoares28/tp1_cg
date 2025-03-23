@@ -333,9 +333,9 @@ class GraphicsEditor:
 
         # Linha 1
         self.transform_controls.append(Button((col1_x, start_y, btn_width, btn_height),
-                                              "Rot+5°", lambda: self.rotate_selected(5)))
+                                              "Rot+1°", lambda: self.rotate_selected(1)))
         self.transform_controls.append(Button((col2_x, start_y, btn_width, btn_height),
-                                              "Rot-5°", lambda: self.rotate_selected(-5)))
+                                              "Rot-1°", lambda: self.rotate_selected(-1)))
         # Linha 2
         self.transform_controls.append(Button((col1_x, start_y + btn_height + gap, btn_width, btn_height),
                                               "Transladar", self.activate_translate))
@@ -503,7 +503,7 @@ class GraphicsEditor:
             "",
             "Transformações:",
             "Transladar: Arraste a forma",
-            "Rotacionar: Rot+5° ou Rot-5°",
+            "Rotacionar: Rot+1° ou Rot-1°",
             "Refletir: X, Y ou Origem",
             "",
             "Botões Recortar (CS/LB):",
